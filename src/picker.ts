@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { FileIndex, IndexedFile } from './fileIndex.js';
 import { RecentlyOpened } from './history.js';
 import { parseInput, wantsSymbols } from './input.js';
+import { enableCustomHighlights, ItemHighlights, SetHighlights } from './quickPickInternals.js';
 import { IRange } from './range.js';
 import { rankFiles } from './ranking.js';
 import { FuzzyScorerCache } from './vendor/vscode/vs/base/common/fuzzyScorer.js';
@@ -33,6 +34,8 @@ type PickerItem = FileItem | vscode.QuickPickItem;
 interface Session {
 	readonly picker: vscode.QuickPick<PickerItem>;
 	readonly openToSideButton: vscode.QuickInputButton;
+	/** Sends the scorer's highlights with the next items. Undefined when VS Code draws its own. */
+	readonly setHighlights: SetHighlights | undefined;
 	/** Score cache for this session's keystrokes, as in Quick Open. */
 	readonly cache: FuzzyScorerCache;
 	/** Cursor position from a `:line:column` suffix. */
@@ -73,14 +76,20 @@ export class FilePicker {
 
 		const picker = vscode.window.createQuickPick<PickerItem>();
 		picker.placeholder = PLACEHOLDER;
-		picker.matchOnDescription = true;
 		// Every item has `alwaysShow`, and the picker must keep the order of `items`.
 		// Without this, it moves the items whose label matches its own simple filter to the top.
 		picker.sortByLabel = false;
 
+		const setHighlights = enableCustomHighlights(picker);
+		if (!setHighlights) {
+			// VS Code's own matcher draws the highlights. They only partly agree with the ranking.
+			picker.matchOnDescription = true;
+		}
+
 		const session: Session = {
 			picker,
 			openToSideButton: createOpenToSideButton(),
+			setHighlights,
 			cache: Object.create(null),
 			range: undefined,
 			lastFile: undefined,
@@ -151,7 +160,7 @@ export class FilePicker {
 
 		session.range = input.range;
 		if (!input.filter.trim()) {
-			picker.items = this.historyItems(session);
+			showItems(session, this.historyItems(session));
 			return;
 		}
 
@@ -171,7 +180,8 @@ export class FilePicker {
 		}
 
 		picker.busy = false;
-		picker.items = rankFiles(files, input.filter, MAX_RESULTS, session.cache).map(file => fileItem(file, [session.openToSideButton]));
+		const ranked = rankFiles(files, input.filter, MAX_RESULTS, session.cache);
+		showItems(session, ranked.map(({ file }) => fileItem(file, [session.openToSideButton])), ranked.map(({ highlights }) => highlights));
 	}
 
 	/** Lets the built-in Quick Open handle the value, for example `>` for commands. */
@@ -194,13 +204,22 @@ export class FilePicker {
 
 		if (event.button === this.removeButton) {
 			this.history.remove(event.item.uri);
-			session.picker.items = this.historyItems(session);
+			showItems(session, this.historyItems(session));
 			return;
 		}
 
 		session.picker.hide();
 		await openFile(event.item.uri, 'side', session.range);
 	}
+}
+
+/**
+ * Replaces the items, with the highlights of each one at the same index.
+ * History items have none, because the query is empty.
+ */
+function showItems(session: Session, items: PickerItem[], highlights: readonly (ItemHighlights | undefined)[] = []): void {
+	session.setHighlights?.(highlights);
+	session.picker.items = items;
 }
 
 function isFileItem(item: PickerItem): item is FileItem {

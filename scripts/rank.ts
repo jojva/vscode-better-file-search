@@ -22,5 +22,5 @@ const start = performance.now();
 const results = rankFiles(files, query, Number(count));
 const elapsed = performance.now() - start;
 
-results.forEach((file, i) => console.log(`${String(i + 1).padStart(3)}  ${file.path}`));
+results.forEach(({ file }, i) => console.log(`${String(i + 1).padStart(3)}  ${file.path}`));
 console.log(`\n${files.length} files ranked in ${elapsed.toFixed(1)} ms`);

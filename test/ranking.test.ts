@@ -28,7 +28,7 @@ const FILES: RankableFile[] = PATHS.map(path => {
 });
 
 function rank(query: string): string[] {
-	return rankFiles(FILES, query, 512).map(file => file.path.slice('/workspace/'.length));
+	return rankFiles(FILES, query, 512).map(({ file }) => file.path.slice('/workspace/'.length));
 }
 
 /** Score of the query on a file name, with or without the word-start rule. */
@@ -107,10 +107,37 @@ describe('ordinary queries', () => {
 	});
 
 	test('an exact path ranks first', () => {
-		assert.equal(rankFiles(FILES, '/workspace/src/rules/src/Version.cpp', 512)[0].label, 'Version.cpp');
+		assert.equal(rankFiles(FILES, '/workspace/src/rules/src/Version.cpp', 512)[0].file.label, 'Version.cpp');
 	});
 
 	test('an empty query matches nothing', () => {
 		assert.deepEqual(rank(''), []);
+	});
+});
+
+describe('highlights', () => {
+	/** The highlighted text of the label and of the description of a ranked file. */
+	function highlighted(query: string, path: string): { label: string[]; description: string[] } {
+		const ranked = rankFiles(FILES, query, 512).find(({ file }) => file.path === `/workspace/${path}`);
+		assert.ok(ranked, `${path} is not ranked for "${query}"`);
+		const { file, highlights } = ranked;
+		return {
+			label: (highlights.label ?? []).map(match => file.label.slice(match.start, match.end)),
+			description: (highlights.description ?? []).map(match => file.description.slice(match.start, match.end)),
+		};
+	}
+
+	test('a path match highlights the folder and the file name', () => {
+		const { label, description } = highlighted('rulevers', 'src/rules/include/rules/Version.h');
+		assert.deepEqual(label, ['Vers']);
+		assert.deepEqual(description, ['rule']);
+	});
+
+	test('a file name prefix highlights only the file name', () => {
+		assert.deepEqual(highlighted('version', 'src/rules/src/Version.cpp'), { label: ['Version'], description: [] });
+	});
+
+	test('a word-start match highlights each word', () => {
+		assert.deepEqual(highlighted('rvtr', 'src/schedule/RecurringVisitTimeRange.h').label, ['R', 'V', 'T', 'R']);
 	});
 });

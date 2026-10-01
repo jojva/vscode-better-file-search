@@ -1,4 +1,5 @@
 import { top } from './vendor/vscode/vs/base/common/arrays.js';
+import type { IMatch } from './vendor/vscode/vs/base/common/filters.js';
 import { compareItemsByFuzzyScore, FuzzyScorerCache, IItemAccessor, prepareQuery, scoreItemFuzzy } from './vendor/vscode/vs/base/common/fuzzyScorer.js';
 
 /** A file as the scorer sees it. */
@@ -9,6 +10,17 @@ export interface RankableFile {
 	readonly description: string;
 	/** Absolute file system path. The scorer uses it to rank an exact path match first. */
 	readonly path: string;
+}
+
+/** The matched characters, as ranges of offsets into the label and the description. */
+export interface FileHighlights {
+	readonly label?: IMatch[];
+	readonly description?: IMatch[];
+}
+
+export interface RankedFile<T extends RankableFile> {
+	readonly file: T;
+	readonly highlights: FileHighlights;
 }
 
 /** Same item shape as Quick Open's `QuickPickItemScorerAccessor`. */
@@ -24,14 +36,18 @@ const accessor: IItemAccessor<RankableFile> = {
  * @param filter The query, without any `:line` suffix.
  * @param maxResults Maximum number of files to return.
  * @param cache Score cache. Reuse it across the keystrokes of one picker session.
- * @returns The matching files, best first.
+ * @returns The matching files, best first, with the characters that matched.
  */
-export function rankFiles<T extends RankableFile>(files: readonly T[], filter: string, maxResults: number, cache: FuzzyScorerCache = Object.create(null)): T[] {
+export function rankFiles<T extends RankableFile>(files: readonly T[], filter: string, maxResults: number, cache: FuzzyScorerCache = Object.create(null)): RankedFile<T>[] {
 	const query = prepareQuery(filter);
 	if (!query.normalized) {
 		return [];
 	}
 
 	const matches = files.filter(file => scoreItemFuzzy(file, query, true, accessor, cache).score > 0);
-	return top(matches, (a, b) => compareItemsByFuzzyScore(a, b, query, true, accessor, cache), maxResults);
+	return top(matches, (a, b) => compareItemsByFuzzyScore(a, b, query, true, accessor, cache), maxResults).map(file => {
+		// A cache hit: every match was scored by the filter above.
+		const { labelMatch, descriptionMatch } = scoreItemFuzzy(file, query, true, accessor, cache);
+		return { file, highlights: { label: labelMatch, description: descriptionMatch } };
+	});
 }

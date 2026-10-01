@@ -10,7 +10,7 @@ every group of matched letters starts a word. Other files are ranked on their fu
 already does for files whose name does not match.
 
 The scorer is VS Code's own, copied from version 1.140.0 into `src/vendor/vscode`. The change is
-about 20 lines in `fuzzyScorer.ts`.
+about 30 lines in `fuzzyScorer.ts`.
 
 ## Install
 
@@ -47,10 +47,19 @@ Cmd+P opens the picker. It works like Quick Open:
 An empty input lists recently opened files. The built-in "Go to File..." is still in the Command
 Palette.
 
+## Highlights
+
+No API lets an extension choose which letters the picker highlights
+([microsoft/vscode#83424](https://github.com/microsoft/vscode/issues/83424)). The extension uses
+VS Code internals instead, the way the built-in pickers work: it turns off the picker's own
+matching and sends the scorer's matches with each item. See `src/quickPickInternals.ts`.
+
+If an update removes these internals, the picker falls back to VS Code's own highlights, which
+only partly agree with the ranking. If VS Code keeps them but stops drawing the sent matches, the
+highlights disappear. Ranking and opening files keep working in both cases.
+
 ## Differences from Quick Open
 
-- Matched letters are not highlighted, or are highlighted wrongly. VS Code draws the highlights
-  with its own matcher, and extensions cannot provide them.
 - Recently opened files only show when the input is empty. Extensions cannot read VS Code's editor
   history, so the extension records the active tab itself. Its list starts from the tabs that are
   open when it first runs in a workspace.

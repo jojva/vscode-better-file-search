@@ -22,7 +22,7 @@ const NO_SCORE: FuzzyScore = [NO_MATCH, []];
 // const DEBUG = true;
 // const DEBUG_MATRIX = false;
 
-export function scoreFuzzy(target: string, query: string, queryLower: string, allowNonContiguousMatches: boolean): FuzzyScore {
+export function scoreFuzzy(target: string, query: string, queryLower: string, allowNonContiguousMatches: boolean, wordStartsOnly = false): FuzzyScore {
 	if (!target || !query) {
 		return NO_SCORE; // return early if target or query are undefined
 	}
@@ -39,7 +39,7 @@ export function scoreFuzzy(target: string, query: string, queryLower: string, al
 	// }
 
 	const targetLower = target.toLowerCase();
-	const res = doScoreFuzzy(query, queryLower, queryLength, target, targetLower, targetLength, allowNonContiguousMatches);
+	const res = doScoreFuzzy(query, queryLower, queryLength, target, targetLower, targetLength, allowNonContiguousMatches, wordStartsOnly);
 
 	// if (DEBUG) {
 	// 	console.log(`%cFinal Score: ${res[0]}`, 'font-weight: bold');
@@ -49,7 +49,7 @@ export function scoreFuzzy(target: string, query: string, queryLower: string, al
 	return res;
 }
 
-function doScoreFuzzy(query: string, queryLower: string, queryLength: number, target: string, targetLower: string, targetLength: number, allowNonContiguousMatches: boolean): FuzzyScore {
+function doScoreFuzzy(query: string, queryLower: string, queryLength: number, target: string, targetLower: string, targetLength: number, allowNonContiguousMatches: boolean, wordStartsOnly: boolean): FuzzyScore {
 	const scores: number[] = [];
 	const matches: number[] = [];
 
@@ -114,6 +114,12 @@ function doScoreFuzzy(query: string, queryLower: string, queryLength: number, ta
 				queryIndexGtNull ||
 				// lastly check if the query is completely contiguous at this index in the target
 				targetLower.startsWith(queryLower, targetIndex)
+			) && (
+				// When restricted to word starts, a new group of matched characters must begin
+				// at a word start. Characters that continue the current group are always allowed.
+				!wordStartsOnly ||
+				matchesSequenceLength > 0 ||
+				isWordStart(target, targetIndex)
 			)) {
 				matches[currentIndex] = matchesSequenceLength + 1;
 				scores[currentIndex] = diagScore + score;
@@ -264,6 +270,24 @@ function scoreSeparatorAtPos(charCode: number): number {
 		default:
 			return 0;
 	}
+}
+
+function isWordStart(target: string, targetIndex: number): boolean {
+	if (targetIndex === 0) {
+		return true;
+	}
+
+	if (scoreSeparatorAtPos(target.charCodeAt(targetIndex - 1))) {
+		return true;
+	}
+
+	// Camel case: "V" in "RuleVersion" and "W" in "JSONWalker", but not "SON" in "JSONWalker"
+	if (!isUpper(target.charCodeAt(targetIndex))) {
+		return false;
+	}
+
+	const next = target.charCodeAt(targetIndex + 1);
+	return !isUpper(target.charCodeAt(targetIndex - 1)) || (next >= CharCode.a && next <= CharCode.z);
 }
 
 // function printMatrix(query: string, target: string, matches: number[], scores: number[]): void {
@@ -504,7 +528,11 @@ function doScoreItemFuzzySingle(label: string, description: string | undefined, 
 			label,
 			query.normalized,
 			query.normalizedLowercase,
-			allowNonContiguousMatches && !query.expectContiguousMatch);
+			allowNonContiguousMatches && !query.expectContiguousMatch,
+			// A label match ranks above every path match, so only a match made of word starts
+			// earns it. A scattered match such as "rulevers" in "RuleValueParserTest.cpp"
+			// falls through to the path score below, where "rules/Version.h" outranks it.
+			true);
 		if (labelScore) {
 
 			// If we have a prefix match on the label, we give a much

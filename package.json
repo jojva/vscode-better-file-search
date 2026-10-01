@@ -1,0 +1,106 @@
+{
+  "name": "vscode-better-file-search",
+  "displayName": "Better File Search",
+  "description": "Go to File (Cmd+P) with a ranking that puts clean path matches above scattered file name matches.",
+  "version": "0.1.0",
+  "publisher": "jojva",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jojva/vscode-better-file-search.git"
+  },
+  "engines": {
+    "vscode": "^1.138.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "enabledApiProposals": [
+    "findFiles2",
+    "quickPickSortByLabel"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "betterFileSearch.show",
+        "title": "Go to File (Better File Search)"
+      },
+      {
+        "command": "betterFileSearch.acceptInBackground",
+        "title": "Better File Search: Open in Background"
+      },
+      {
+        "command": "betterFileSearch.alternativeAccept",
+        "title": "Better File Search: Open Pinned"
+      },
+      {
+        "command": "betterFileSearch.openToSide",
+        "title": "Better File Search: Open to the Side"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "betterFileSearch.acceptInBackground",
+          "when": "false"
+        },
+        {
+          "command": "betterFileSearch.alternativeAccept",
+          "when": "false"
+        },
+        {
+          "command": "betterFileSearch.openToSide",
+          "when": "false"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "betterFileSearch.show",
+        "key": "ctrl+p",
+        "mac": "cmd+p",
+        "when": "(!betterFileSearch.visible || !inQuickOpen) && !inFilesPicker"
+      },
+      {
+        "command": "workbench.action.quickOpenNavigateNext",
+        "key": "ctrl+p",
+        "mac": "cmd+p",
+        "when": "betterFileSearch.visible && inQuickOpen"
+      },
+      {
+        "command": "betterFileSearch.acceptInBackground",
+        "key": "right",
+        "when": "betterFileSearch.visible && inQuickOpen && (!inputFocus || cursorAtEndOfQuickInputBox)"
+      },
+      {
+        "command": "betterFileSearch.alternativeAccept",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "betterFileSearch.visible && inQuickOpen"
+      },
+      {
+        "command": "betterFileSearch.openToSide",
+        "key": "alt+enter",
+        "when": "betterFileSearch.visible && inQuickOpen"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node esbuild.mjs --tests && node --test out/test/",
+    "package": "npm run typecheck && npm run build && vsce package --no-dependencies",
+    "install-extension": "npm run package && code --install-extension vscode-better-file-search-0.1.0.vsix --force"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "1.138.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0"
+  }
+}

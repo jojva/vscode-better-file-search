@@ -8,3 +8,7 @@ modules it imports, copied as they are so that the ranking matches VS Code's.
 
 `fuzzyScorer.ts` has one local change: a file name match only gets the label bonus if every group
 of matched letters starts a word. Search for `wordStartsOnly` to find it.
+
+Every other file starts with `// @ts-nocheck`. They import type-only modules that are not copied
+here, and some use typings from a newer TypeScript. esbuild drops type-only imports when it
+bundles, so this only affects `tsc`. `fuzzyScorer.ts` is still type-checked.

@@ -58,6 +58,23 @@ If an update removes these internals, the picker falls back to VS Code's own hig
 only partly agree with the ranking. If VS Code keeps them but stops drawing the sent matches, the
 highlights disappear. Ranking and opening files keep working in both cases.
 
+## Self-check
+
+The first time the extension runs on a new VS Code version, it checks what it relies on beyond the
+stable API:
+
+- the proposed `findFiles2` API,
+- the picker internals used for ordering and highlights,
+- the workbench commands it calls, like `workbench.action.quickOpenNavigateNext`,
+- the context keys in its keybindings, like `cursorAtEndOfQuickInputBox`. `inFilesPicker` cannot be
+  checked, because VS Code only lists it after the built-in "Go to File" has opened once.
+
+A failure shows a warning once per version, and the details go to the "Better File Search" output
+channel. Run "Better File Search: Run Self-Check" to check again.
+
+The checks cannot see what VS Code draws. Wrong ordering or missing highlights after an update
+have to be noticed by eye.
+
 ## Differences from Quick Open
 
 - Recently opened files only show when the input is empty. Extensions cannot read VS Code's editor

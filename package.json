@@ -2,7 +2,7 @@
   "name": "vscode-better-file-search",
   "displayName": "Better File Search",
   "description": "Go to File (Cmd+P) with a ranking that puts clean path matches above scattered file name matches.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "jojva",
   "license": "MIT",
   "repository": {
@@ -28,6 +28,10 @@
       {
         "command": "betterFileSearch.show",
         "title": "Go to File (Better File Search)"
+      },
+      {
+        "command": "betterFileSearch.selfCheck",
+        "title": "Better File Search: Run Self-Check"
       },
       {
         "command": "betterFileSearch.acceptInBackground",
@@ -93,8 +97,8 @@
     "build": "node esbuild.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node esbuild.mjs --tests && node --test out/test/",
-    "package": "npm run typecheck && npm run build && vsce package --no-dependencies",
-    "install-extension": "npm run package && code --install-extension vscode-better-file-search-0.1.0.vsix --force"
+    "package": "npm run typecheck && npm run build && vsce package --no-dependencies --out vscode-better-file-search.vsix",
+    "install-extension": "npm run package && code --install-extension vscode-better-file-search.vsix --force"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
